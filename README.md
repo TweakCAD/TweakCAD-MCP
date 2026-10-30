@@ -22,12 +22,18 @@ the browser keeps up to date via push events.
 
 ## Install / run
 
-From a checkout of the monorepo:
+Published to npm, so most clients can run it without a checkout:
 
 ```bash
-pnpm --filter @tweakcad/mcp-bridge install
-pnpm --filter @tweakcad/mcp-bridge build
-pnpm --filter @tweakcad/mcp-bridge start    # listens on ws://127.0.0.1:7788
+npx @tweakcad/mcp-bridge           # listens on ws://127.0.0.1:7788
+```
+
+From a clone of this repo (Node 24, `corepack enable` for pnpm):
+
+```bash
+pnpm install
+pnpm build
+pnpm start                         # listens on ws://127.0.0.1:7788
 ```
 
 CLI options:
@@ -207,10 +213,14 @@ UI uses, so validation messages match exactly what a human would see.
 ## Development
 
 ```bash
-pnpm --filter @tweakcad/mcp-bridge typecheck
-pnpm --filter @tweakcad/mcp-bridge test
-pnpm --filter @tweakcad/mcp-bridge build
+pnpm typecheck
+pnpm test
+pnpm build
 ```
+
+CI runs typecheck and the test suite on every push. Contributions welcome —
+see [CONTRIBUTING.md](./CONTRIBUTING.md); for a security issue, see
+[SECURITY.md](./SECURITY.md) rather than opening an issue.
 
 The test suite mocks the WebSocket client end-to-end; there's no need for a
 running browser or MCP client to develop locally.

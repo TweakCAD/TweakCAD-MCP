@@ -22,7 +22,6 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "start": "node --enable-source-maps dist/cli.js",
-    "lint": "eslint src/ tests/",
     "test:unit": "vitest run",
     "test": "vitest run",
     "clean": "rm -rf dist"

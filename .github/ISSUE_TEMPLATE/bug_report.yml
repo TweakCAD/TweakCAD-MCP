@@ -1,0 +1,62 @@
+name: Bug report
+description: The bridge doesn't relay something correctly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security issue? Don't file it here — see
+        [SECURITY.md](../blob/main/SECURITY.md).
+
+        If a *tool* does the wrong thing in the editor, that is usually the
+        [TweakCAD](https://github.com/HumanHub/TweakCAD) repo — the bridge
+        forwards tool calls, it doesn't execute them. File it here if the
+        call never arrives, arrives malformed, or the response doesn't come
+        back.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you asked the client to do, and where it stopped.
+    validations:
+      required: true
+
+  - type: textarea
+    id: stderr
+    attributes:
+      label: Bridge output
+      description: |
+        Everything the bridge prints goes to stderr. In most clients that is
+        the MCP server log — Claude Desktop keeps it under its logs
+        directory, and most editors have an "MCP server output" panel.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: Claude Desktop 1.2 / Cursor / VS Code Copilot agent mode
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Bridge version
+      description: "`npx @tweakcad/mcp-bridge --help` prints it, or the commit you built."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connected
+    attributes:
+      label: Was a browser tab connected?
+      options:
+        - "Yes — the editor was open and the bridge reported a session"
+        - "No — nothing connected to the WebSocket"
+        - "Not sure"
+    validations:
+      required: true
