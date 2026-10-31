@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/HumanHub/TweakCAD-MCP/security/advisories/new
+    url: https://github.com/TweakCAD/TweakCAD-MCP/security/advisories/new
     about: Report privately — please don't open a public issue.
   - name: Editor bug or feature request
-    url: https://github.com/HumanHub/TweakCAD/issues
+    url: https://github.com/TweakCAD/TweakCAD/issues
     about: The bridge only relays. Tool behaviour lives in the editor repo.

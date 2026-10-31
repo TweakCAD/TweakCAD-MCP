@@ -9,7 +9,7 @@ body:
         [SECURITY.md](../blob/main/SECURITY.md).
 
         If a *tool* does the wrong thing in the editor, that is usually the
-        [TweakCAD](https://github.com/HumanHub/TweakCAD) repo — the bridge
+        [TweakCAD](https://github.com/TweakCAD/TweakCAD) repo — the bridge
         forwards tool calls, it doesn't execute them. File it here if the
         call never arrives, arrives malformed, or the response doesn't come
         back.

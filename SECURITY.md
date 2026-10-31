@@ -31,7 +31,7 @@ socket. That is the relay working.
 ## Scope
 
 Vulnerabilities in the editor itself belong in the
-[TweakCAD](https://github.com/HumanHub/TweakCAD) repository, and server-side
+[TweakCAD](https://github.com/TweakCAD/TweakCAD) repository, and server-side
 issues can be reported through either — they will be routed.
 
 ## Supported versions
