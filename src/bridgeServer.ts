@@ -11,7 +11,7 @@
  */
 
 import { WebSocketServer, type WebSocket } from 'ws';
-import { BrowserSession, type WsLike } from './browserSession.ts';
+import type { BrowserSession, WsLike } from './browserSession.ts';
 
 export interface BridgeServerOptions {
   /** TCP port to listen on. */

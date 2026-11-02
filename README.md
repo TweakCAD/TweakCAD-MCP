@@ -214,11 +214,12 @@ UI uses, so validation messages match exactly what a human would see.
 
 ```bash
 pnpm typecheck
+pnpm lint
 pnpm test
 pnpm build
 ```
 
-CI runs typecheck and the test suite on every push. Contributions welcome —
+CI runs typecheck, lint and the test suite on every push. Contributions welcome —
 see [CONTRIBUTING.md](./CONTRIBUTING.md); for a security issue, see
 [SECURITY.md](./SECURITY.md) rather than opening an issue.
 

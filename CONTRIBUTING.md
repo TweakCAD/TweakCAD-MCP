@@ -12,6 +12,7 @@ Node 24, pnpm via `corepack enable`.
 ```bash
 pnpm install
 pnpm typecheck
+pnpm lint
 pnpm test        # vitest; the WebSocket client end is mocked, no browser needed
 pnpm build
 ```

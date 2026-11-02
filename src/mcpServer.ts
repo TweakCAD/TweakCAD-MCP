@@ -13,7 +13,8 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { BrowserSession, NO_SESSION_MESSAGE } from './browserSession.ts';
+import { NO_SESSION_MESSAGE } from './browserSession.ts';
+import type { BrowserSession } from './browserSession.ts';
 
 export interface McpServerOptions {
   name?: string;
