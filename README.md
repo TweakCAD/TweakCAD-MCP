@@ -183,7 +183,7 @@ written for the old names need updating.
 | `sketch_trim` / `_extend` / `_fillet` / `_offset` / `_mirror` / `_project` | Modify tools, and model edges brought in as external curves. |
 | `sketch_pick_geometry` | The point or curve at a position in a sketch, as the in-app picker finds it, to name a curve for the modify tools. |
 | `sketch_move_points` / `sketch_set_construction` / `sketch_delete` | Moving points, construction curves, deleting rows. |
-| `feature_extrude` / `_revolve` / `_fillet` / `_chamfer` / `_hole` / `_shell` / `_pattern` / `_mirror` / `_move` / `_boolean` / `_primitive` / `_thread` / `_construction` / `_remove_body` | Features, written as the app's panels write them; each returns its status after the rebuild. |
+| `feature_extrude` / `_revolve` / `_loft` / `_sweep` / `_fillet` / `_chamfer` / `_hole` / `_shell` / `_pattern` / `_mirror` / `_move` / `_boolean` / `_primitive` / `_thread` / `_construction` / `_remove_body` | Features, written as the app's panels write them; each returns its status after the rebuild. |
 | `feature_freeze` | Freeze a feature (it keeps its result as last built, whatever changes before it) or make it live again. |
 | `get_assembly` | An assembly's instances with their solved poses, joints with their values, motion links, groups, positions, exploded views, out-of-date contexts and its features with their copy counts. |
 | `assembly_create` / `assembly_insert` / `assembly_move_instance` / `assembly_set_instance` / `assembly_delete` | Make an assembly; place, move, ground or suppress instances of parts, assemblies and library components; delete a row. |
