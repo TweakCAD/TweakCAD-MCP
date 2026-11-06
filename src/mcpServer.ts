@@ -22,7 +22,13 @@ export interface McpServerOptions {
 }
 
 const DEFAULT_NAME = 'tweakcad-mcp-bridge';
-const DEFAULT_VERSION = '0.1.0';
+const DEFAULT_VERSION = '0.2.0';
+
+/** What an MCP client is told about using the tools. */
+export const INSTRUCTIONS =
+  'These tools edit the document open in a TweakCAD tab. Call cad_help first: it explains the document, handles ' +
+  '(names for bodies, faces, edges and sketch regions, from the list_* tools and get_sketch), units and worked examples. ' +
+  'Group a change of several steps between begin_transaction and end_transaction so the user can undo it at once.';
 
 /** An image value the browser's executor returns for view_screenshot. */
 type ImageValue = { kind: 'image'; mimeType: string; data: string };
@@ -45,7 +51,7 @@ export function createMcpServer(
 } {
   const server = new Server(
     { name: opts.name ?? DEFAULT_NAME, version: opts.version ?? DEFAULT_VERSION },
-    { capabilities: { tools: { listChanged: true } } },
+    { capabilities: { tools: { listChanged: true } }, instructions: INSTRUCTIONS },
   );
 
   // Browser connect/disconnect changes the catalogue → tell the client.

@@ -18,11 +18,11 @@ describe('BrowserSession', () => {
     const { sent, ws } = fakeWs();
     s.attach(ws);
 
-    const p = s.executeTool('get_document', { a: 1 });
+    const p = s.executeTool('list_features', { a: 1 });
     expect(sent).toHaveLength(1);
     const req = JSON.parse(sent[0]!);
     expect(req.type).toBe('executeTool');
-    expect(req.name).toBe('get_document');
+    expect(req.name).toBe('list_features');
     expect(req.input).toEqual({ a: 1 });
 
     s.handleFrame(encode({ id: req.id, ok: true, result: { doc: true } }));
@@ -51,6 +51,17 @@ describe('BrowserSession', () => {
     expect(s.getTools()).toHaveLength(1);
     expect(s.getTools()[0]!.name).toBe('get_document');
     expect(spy).toHaveBeenCalledTimes(1);
+    expect(s.getContract()).toBeNull();
+  });
+
+  it('keeps the catalogue contract the browser advertises, until it goes', () => {
+    const s = new BrowserSession();
+    const { ws } = fakeWs();
+    s.attach(ws);
+    s.handleFrame(encode({ type: 'hello', contract: 2, tools: [{ name: 'cad_help', description: 'd', inputSchema: { type: 'object' } }] }));
+    expect(s.getContract()).toBe(2);
+    s.detach();
+    expect(s.getContract()).toBeNull();
   });
 
   it('detach rejects in-flight calls and clears the catalogue', async () => {

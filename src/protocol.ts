@@ -34,6 +34,10 @@ export type ToolResponseErr = {
 export type ToolResponse = ToolResponseOk | ToolResponseErr;
 
 // --- Browser -> bridge: advertise the tool catalogue (sent on connect) ------
+//
+// `contract` is the version of the tool catalogue the app runs (its tool
+// names, inputs and results). The bridge relays any version; it passes the
+// catalogue to the MCP client as the app sent it.
 
 export type McpToolDescriptor = {
   name: string;
@@ -46,7 +50,7 @@ export type McpToolDescriptor = {
   };
 };
 
-export type HelloEvent = { type: 'hello'; tools: McpToolDescriptor[] };
+export type HelloEvent = { type: 'hello'; contract?: number; tools: McpToolDescriptor[] };
 
 // --- Type guards (frames come from another process) -------------------------
 

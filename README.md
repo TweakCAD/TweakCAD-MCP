@@ -15,10 +15,10 @@ default) to the browser tab.
 +----------------+                            +-----------------+                          +----------------+
 ```
 
-The bridge itself holds **no document state** — every tool call is forwarded
-to the browser, which is the source of truth. Read-only reads
-(`get_document`, `get_diagnostics`) are answered from a small in-memory cache
-the browser keeps up to date via push events.
+The bridge itself holds **no document state** and runs no tool logic: every
+tool call is forwarded to the browser tab, which runs it against the open
+document and replies. The tab also sends the tool list on connect, so the
+bridge lists exactly the tools the running app has.
 
 ## Install / run
 
@@ -148,65 +148,52 @@ state — yellow while connecting, green when the bridge is reachable,
 red on error. Hover for the URL and last error message; click to jump
 back into Settings.
 
-The browser opens a WebSocket to the bridge, sends an initial document
-snapshot, and starts answering tool calls. Mutations from the MCP client
-go through the same `CommandBus` the human UI uses — bad commands are
-rejected with the same validation messages a human would see.
+The browser opens a WebSocket to the bridge, sends its tool list and starts
+answering tool calls, one at a time in the order they arrive. Edits from the
+MCP client go through the same editor commands the app's own tools use, so a
+refused edit says why in the same words. Undo groups a client opens with
+`begin_transaction` and leaves open are closed when it disconnects.
 
 ## Tool surface
 
-The bridge forwards the full `@tweakcad/core` tool catalog (~50 tools) to the
-connected MCP client, verbatim — the catalogue of record is
-`@tweakcad/core` `tools.ts` (mirrored in cad-architecture.md §34). The set:
+The tools are the app's tool catalogue, **contract version 2** (the
+`contract` field of the browser's `hello` frame). It works on the version-2
+document format: parts with a timeline of features, value objects bound to
+expressions, sketch rows. Bodies, faces, edges, vertices, sketch regions,
+curves and points are listed with **handles** (`b:1`, `f:4`, `e:7`, `r:2`);
+feature tools take handles and the app writes each reference by picking the
+entity, so a handle keeps naming its entity after later edits. Call
+`cad_help` first: it returns the workflow guide.
 
-| Tool | Notes |
+Version 1 of the contract (`get_document` returning the old document,
+`dispatch_command`, stable face and edge ids, `wait_for_rebuild`) is gone;
+a bridge from 0.1 relays the new tools unchanged, but clients and prompts
+written for the old names need updating.
+
+| Tools | What they do |
 |---|---|
-| `cad_help` | Returns the workflow guide (canonical ordering, gotchas, patterns). Call first. |
-| `get_document` | Cached on the bridge; refreshed by browser push events. |
-| `query_features` | Compact timeline summary per part. |
-| `get_diagnostics` | Project-wide results cached via push events. Per-part queries round-trip to the browser for filtering. |
-| `dispatch_command` | Any `CadCommand` (see `@tweakcad/core/src/commands/types.ts`). Escape hatch when no wrapped tool exists. |
-| `begin_transaction` / `end_transaction` | Group multiple dispatches into one undo step. |
-| `sketch_create` / `sketch_draw_line` / `sketch_draw_rectangle` / `sketch_draw_circle` / `sketch_draw_slot` / `sketch_draw_arc` / `sketch_draw_arc3point` / `sketch_draw_polygon` / `sketch_draw_ellipse` / `sketch_draw_spline` / `sketch_draw_point` | Wrapped sketch primitives — flat JSON schemas, return new ids. |
-| `sketch_apply_constraint` / `sketch_remove_constraint` | Apply / remove any of the 19 constraint kinds (one discriminated-union tool, keyed on `constraint.type`). |
-| `sketch_trim` / `sketch_extend` / `sketch_fillet` / `sketch_offset` / `sketch_mirror` | Sketch modify ops (coverage per op: trim line/arc/circle; extend line; fillet line↔line; offset line/circle; mirror line/circle/arc). |
-| `sketch_move_point` / `sketch_move_points` | Drag one or many sketch points; re-solves. |
-| `list_sketch_elements` / `sketch_pick_geometry` | Sketch id-discovery + hit-test. |
-| `feature_extrude` / `feature_revolve` / `feature_loft` / `feature_sweep` | Solid creation. `feature_extrude` and `feature_revolve` auto-pick a profile when one isn't given. |
-| `feature_fillet` / `feature_chamfer` / `feature_hole` / `feature_shell` | Edge / face modifiers. Need stable edge / face ids from `list_edges` / `list_faces` (or `find_edges` / `find_face`). |
-| `feature_mirror` / `feature_pattern` | Body replication (mirror across plane; linear / circular pattern). |
-| `list_bodies` / `list_faces` / `list_edges` | ID-discovery; round-trip to the browser. |
-| `find_edges` / `find_face` | Filtered discovery: "edges between two faces", "faces touching this edge", etc. Returns the same shape as `list_*`. |
-| `list_sketch_regions` | Closed regions detected in a sketch. |
-| `wait_for_rebuild` | Block until the worker has finished its current rebuild. Call after any geometry-creating tool before reading diagnostics. |
-| `view_fit_all` | Frame all visible geometry. |
-| `view_set_standard` | Snap to `front` / `back` / `top` / `bottom` / `left` / `right` / `home`. |
-| `view_zoom` | One step `in` or `out`. |
-| `view_screenshot` | JPEG of the viewport returned as image content (multi-modal). |
-
-The browser-side mutations dispatched through `dispatch_command` execute
-against the live `documentStore` + `commandBus` — same code path the human
-UI uses, so validation messages match exactly what a human would see.
+| `cad_help` | The workflow guide: document model, handles, coordinates, examples, what fails. |
+| `get_document` / `list_features` / `get_diagnostics` | The document as stored, an outline with each feature's status, and what the newest rebuild paused. Reads wait for the newest rebuild. |
+| `run_command` | One editor command (rename, suppress, delete, move, roll back, parameters, configurations, groups, …); `"new:<kind>"` makes ids for added rows. |
+| `set_reference` / `set_value` / `set_parameter` | Write a picked reference into a feature's inputs; set a value's expression; create or change a parameter. |
+| `begin_transaction` / `end_transaction` | Group changes into one undo step. |
+| `sketch_create` / `get_sketch` | A sketch on a standard plane, face or construction plane; a sketch's rows, degrees of freedom and regions with handles. |
+| `sketch_draw_line` / `_rectangle` / `_circle` / `_arc` / `_slot` / `_polygon` / `_ellipse` / `_spline` / `_point` | Drawing; points given by id or within a tolerance are shared. |
+| `sketch_constrain` / `sketch_set_dimension` | Geometric constraints and dimensions with expressions; the sketch is solved and an over-constraint is refused. |
+| `sketch_trim` / `_extend` / `_fillet` / `_offset` / `_mirror` / `_project` | Modify tools, and model edges brought in as external curves. |
+| `sketch_move_points` / `sketch_set_construction` / `sketch_delete` | Moving points, construction curves, deleting rows. |
+| `feature_extrude` / `_revolve` / `_fillet` / `_chamfer` / `_hole` / `_shell` / `_pattern` / `_mirror` / `_move` / `_boolean` / `_primitive` / `_thread` / `_construction` / `_remove_body` | Features, written as the app's panels write them; each returns its status after the rebuild. |
+| `list_bodies` / `list_faces` / `list_edges` / `list_vertices` / `list_construction` / `measure` | What the model is built into, with handles and measures, and filters (a face's edges, the edge between two faces, faces facing a direction). |
+| `view_fit_all` / `view_set_standard` / `view_zoom` / `view_screenshot` | The camera, and a JPEG of the viewport returned as image content. |
 
 ## Architecture notes
 
-- **Single session for v1.** A second browser attempting to connect while
-  another is active is rejected with WebSocket close code 1013 and a clear
-  reason. Multi-session relay is future work and would require keying tool
-  calls by session id (which `@tweakcad/core`'s tools layer doesn't expose
-  yet).
-- **Cached reads.** `ToolHost.getDocument()` and `getDiagnostics()` are
-  synchronous in `@tweakcad/core`, so the bridge maintains a local cache
-  that the browser refreshes via `document_changed` / `diagnostics_updated`
-  push events. The cache may be slightly stale between user actions but
-  that's acceptable at the pace of tool calls.
-- **`view_get_state` was removed** from the tool catalog. The earlier
-  iteration kept the method but marked it UNSUPPORTED on the bridge
-  (camera state would flood the WS if cache-served). The eventual call
-  is that the tool earned ~60 tokens of context per request and no
-  flow actually needed it. The remaining four view tools (fit /
-  standard / zoom / screenshot) are action-shaped and round-trip async
-  cleanly.
+- **One session.** A second browser that connects while another is active is
+  refused with WebSocket close code 1013 and a reason.
+- **No cache.** Every call, reads included, goes to the browser, which holds
+  the document; the bridge keeps only the tool list of the last `hello`.
+- **Images.** A tool value `{kind: 'image', mimeType, data}` (the screenshot)
+  is returned to the MCP client as image content.
 - **Stdio is reserved for MCP.** All human-readable logging goes to stderr;
   writing diagnostics to stdout would corrupt the MCP framing.
 

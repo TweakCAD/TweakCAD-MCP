@@ -32,6 +32,7 @@ describe('protocol', () => {
 
   it('isHelloEvent requires a tools array', () => {
     expect(isHelloEvent({ type: 'hello', tools: [] })).toBe(true);
+    expect(isHelloEvent({ type: 'hello', contract: 2, tools: [] })).toBe(true);
     expect(isHelloEvent({ type: 'hello' })).toBe(false);
     expect(isHelloEvent({ type: 'other', tools: [] })).toBe(false);
   });

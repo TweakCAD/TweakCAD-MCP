@@ -50,6 +50,7 @@ export class BrowserSession {
   private readonly pending = new Map<string, Pending>();
   private readonly timeoutMs: number;
   private tools: McpToolDescriptor[] = [];
+  private contract: number | null = null;
 
   /**
    * Fired when the advertised tool catalogue changes (browser connect with
@@ -77,6 +78,7 @@ export class BrowserSession {
       p.reject(err);
     }
     this.pending.clear();
+    this.contract = null;
     if (this.tools.length > 0) {
       this.tools = [];
       this.onToolsChanged?.();
@@ -85,6 +87,11 @@ export class BrowserSession {
 
   hasSession(): boolean {
     return this.socket !== null && this.socket.isOpen();
+  }
+
+  /** The tool catalogue version the browser last advertised, or null (no session, or an app that sends none). */
+  getContract(): number | null {
+    return this.contract;
   }
 
   /** The tools the browser last advertised (empty when no session). */
@@ -108,6 +115,7 @@ export class BrowserSession {
 
     if (isHelloEvent(parsed)) {
       this.tools = parsed.tools;
+      this.contract = typeof parsed.contract === 'number' ? parsed.contract : null;
       this.onToolsChanged?.();
     }
   }
