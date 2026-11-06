@@ -156,8 +156,10 @@ refused edit says why in the same words. Undo groups a client opens with
 
 ## Tool surface
 
-The tools are the app's tool catalogue, **contract version 2** (the
-`contract` field of the browser's `hello` frame). It works on the version-2
+The tools are the app's tool catalogue, **contract version 3** (the
+`contract` field of the browser's `hello` frame; 3 changed `assembly_insert`,
+whose `assembly` is now only the destination, with `subassembly` for placing
+another assembly). It works on the version-2
 document format: parts with a timeline of features, value objects bound to
 expressions, sketch rows. Bodies, faces, edges, vertices, sketch regions,
 curves and points are listed with **handles** (`b:1`, `f:4`, `e:7`, `r:2`);
