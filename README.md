@@ -181,8 +181,15 @@ written for the old names need updating.
 | `sketch_draw_line` / `_rectangle` / `_circle` / `_arc` / `_slot` / `_polygon` / `_ellipse` / `_spline` / `_point` | Drawing; points given by id or within a tolerance are shared. |
 | `sketch_constrain` / `sketch_set_dimension` | Geometric constraints and dimensions with expressions; the sketch is solved and an over-constraint is refused. |
 | `sketch_trim` / `_extend` / `_fillet` / `_offset` / `_mirror` / `_project` | Modify tools, and model edges brought in as external curves. |
+| `sketch_pick_geometry` | The point or curve at a position in a sketch, as the in-app picker finds it, to name a curve for the modify tools. |
 | `sketch_move_points` / `sketch_set_construction` / `sketch_delete` | Moving points, construction curves, deleting rows. |
 | `feature_extrude` / `_revolve` / `_fillet` / `_chamfer` / `_hole` / `_shell` / `_pattern` / `_mirror` / `_move` / `_boolean` / `_primitive` / `_thread` / `_construction` / `_remove_body` | Features, written as the app's panels write them; each returns its status after the rebuild. |
+| `get_assembly` | An assembly's instances with their solved poses, joints with their values, motion links, groups, positions, exploded views and out-of-date contexts. |
+| `assembly_create` / `assembly_insert` / `assembly_move_instance` / `assembly_set_instance` / `assembly_delete` | Make an assembly; place, move, ground or suppress instances of parts, assemblies and library components; delete a row. |
+| `assembly_joint` / `assembly_drive` / `assembly_relation` / `assembly_group` | Joints between faces or round edges of instances, driving their values, motion links between joints, rigid groups and contact sets. Each edit writes back the pose it solves to. |
+| `assembly_position` / `assembly_exploded_view` | Saved positions of the joints, and exploded views. |
+| `feature_derive` | Another part's, an assembly's or a library component's bodies brought into a part, offset or mirrored, as new bodies or joined. |
+| `assembly_update_contexts` / `assembly_hole_through` | Re-capture out-of-date contexts (a part using another part's geometry), and a hole through several parts. |
 | `list_bodies` / `list_faces` / `list_edges` / `list_vertices` / `list_construction` / `measure` | What the model is built into, with handles and measures, and filters (a face's edges, the edge between two faces, faces facing a direction). |
 | `view_fit_all` / `view_set_standard` / `view_zoom` / `view_screenshot` | The camera, and a JPEG of the viewport returned as image content. |
 
