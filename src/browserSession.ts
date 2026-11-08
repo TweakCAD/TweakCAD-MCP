@@ -5,10 +5,6 @@
  * (1) forwards `executeTool` requests to the browser and correlates the
  * replies by id, and (2) keeps the latest tool catalogue the browser
  * advertised via `hello`, so the MCP server can answer ListTools.
- *
- * Replaces the old SessionHost, which implemented the core ToolHost
- * interface + a push-fed document cache. None of that is needed once
- * execution runs in the browser (where the live document already lives).
  */
 
 import {
@@ -31,9 +27,13 @@ export interface WsLike {
 export const NO_SESSION_MESSAGE =
   'no active browser session — open TweakCAD and enable the AI bridge in Settings → AI.';
 
-const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+
+/** What a caller is told when a call got no answer: the tab may still have applied it. */
+const MAY_HAVE_RUN = 'the app may still have applied it; check with list_features or get_diagnostics before running it again.';
 
 type Pending = {
+  name: string;
   resolve: (r: ToolResponse) => void;
   reject: (e: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -42,6 +42,8 @@ type Pending = {
 export interface BrowserSessionOptions {
   /** Override the per-call round-trip timeout (ms). Default: 60 000. */
   requestTimeoutMs?: number;
+  /** Called on each `hello`, with the contract it carries (null when none) and its tool count. */
+  onHello?: (contract: number | null, toolCount: number) => void;
 }
 
 export class BrowserSession {
@@ -49,8 +51,10 @@ export class BrowserSession {
   private nextId = 1;
   private readonly pending = new Map<string, Pending>();
   private readonly timeoutMs: number;
+  private readonly onHello: ((contract: number | null, toolCount: number) => void) | null;
   private tools: McpToolDescriptor[] = [];
   private contract: number | null = null;
+  private toolWaiters: (() => void)[] = [];
 
   /**
    * Fired when the advertised tool catalogue changes (browser connect with
@@ -61,6 +65,7 @@ export class BrowserSession {
 
   constructor(opts: BrowserSessionOptions = {}) {
     this.timeoutMs = opts.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.onHello = opts.onHello ?? null;
   }
 
   // --- Lifecycle ------------------------------------------------------------
@@ -72,10 +77,9 @@ export class BrowserSession {
   /** Drop the socket: reject in-flight calls and clear the catalogue. */
   detach(reason = 'browser disconnected'): void {
     this.socket = null;
-    const err = new Error(reason);
     for (const p of this.pending.values()) {
       clearTimeout(p.timer);
-      p.reject(err);
+      p.reject(new Error(`the TweakCAD tab went away before '${p.name}' replied (${reason}); ${MAY_HAVE_RUN}`));
     }
     this.pending.clear();
     this.contract = null;
@@ -99,6 +103,23 @@ export class BrowserSession {
     return this.tools;
   }
 
+  /**
+   * Resolves once a browser has advertised tools, or after `ms`, whichever
+   * comes first. Resolves at once when tools are already known.
+   */
+  waitForTools(ms: number): Promise<void> {
+    if (this.tools.length > 0) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const done = (): void => {
+        clearTimeout(timer);
+        this.toolWaiters = this.toolWaiters.filter((w) => w !== done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      this.toolWaiters.push(done);
+    });
+  }
+
   /** Feed a raw text frame: a tool response (resolve) or a hello (catalogue). */
   handleFrame(text: string): void {
     const parsed = decode(text);
@@ -116,7 +137,9 @@ export class BrowserSession {
     if (isHelloEvent(parsed)) {
       this.tools = parsed.tools;
       this.contract = typeof parsed.contract === 'number' ? parsed.contract : null;
+      this.onHello?.(this.contract, this.tools.length);
       this.onToolsChanged?.();
+      if (this.tools.length > 0) for (const w of [...this.toolWaiters]) w();
     }
   }
 
@@ -136,9 +159,9 @@ export class BrowserSession {
     return new Promise<ToolResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`tool '${name}' timed out after ${this.timeoutMs}ms`));
+        reject(new Error(`tool '${name}' timed out after ${this.timeoutMs / 1000}s without a reply; ${MAY_HAVE_RUN}`));
       }, this.timeoutMs);
-      this.pending.set(id, { resolve, reject, timer });
+      this.pending.set(id, { name, resolve, reject, timer });
       try {
         sock.send(encode(req));
       } catch (e) {

@@ -13,16 +13,24 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { createRequire } from 'node:module';
 import { NO_SESSION_MESSAGE } from './browserSession.ts';
 import type { BrowserSession } from './browserSession.ts';
 
 export interface McpServerOptions {
   name?: string;
   version?: string;
+  /** How long ListTools waits for a browser when none has advertised tools (ms). Default: 5 000. */
+  listToolsWaitMs?: number;
 }
 
 const DEFAULT_NAME = 'tweakcad-mcp-bridge';
-const DEFAULT_VERSION = '0.2.0';
+
+/** The package version, from the package.json beside `src/` or `dist/`. */
+export const PACKAGE_VERSION = (createRequire(import.meta.url)('../package.json') as { version: string }).version;
+
+/** How long a ListTools made before any browser has connected waits for one (ms). */
+export const LIST_TOOLS_WAIT_MS = 5_000;
 
 /** What an MCP client is told about using the tools. */
 export const INSTRUCTIONS =
@@ -50,7 +58,7 @@ export function createMcpServer(
   connectStdio: () => Promise<void>;
 } {
   const server = new Server(
-    { name: opts.name ?? DEFAULT_NAME, version: opts.version ?? DEFAULT_VERSION },
+    { name: opts.name ?? DEFAULT_NAME, version: opts.version ?? PACKAGE_VERSION },
     { capabilities: { tools: { listChanged: true } }, instructions: INSTRUCTIONS },
   );
 
@@ -61,9 +69,14 @@ export function createMcpServer(
     });
   };
 
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: session.getTools(),
-  }));
+  // A client lists tools right after it starts the bridge, usually before the
+  // tab has reconnected. Not every client re-fetches on tools/list_changed,
+  // so a ListTools made while no tab is connected gives one a moment to.
+  const listToolsWaitMs = opts.listToolsWaitMs ?? LIST_TOOLS_WAIT_MS;
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    await session.waitForTools(listToolsWaitMs);
+    return { tools: session.getTools() };
+  });
 
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const name = req.params.name;

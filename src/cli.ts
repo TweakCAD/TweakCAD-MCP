@@ -14,59 +14,84 @@
  * never corrupt the stdio protocol.
  */
 
-import { BridgeServer } from './bridgeServer.ts';
-import { BrowserSession } from './browserSession.ts';
-import { createMcpServer } from './mcpServer.ts';
+import { BridgeServer, HOSTED_APP_ORIGIN, normalizeOrigin } from './bridgeServer.ts';
+import { BrowserSession, DEFAULT_REQUEST_TIMEOUT_MS } from './browserSession.ts';
+import { createMcpServer, PACKAGE_VERSION } from './mcpServer.ts';
 
 const DEFAULT_PORT = 7788;
 
-function parseArgs(argv: readonly string[]): {
+type Args = {
   port: number;
+  timeoutSeconds: number;
+  allowedOrigins: string[];
   help: boolean;
-} {
-  let port = DEFAULT_PORT;
-  let help = false;
+  version: boolean;
+};
+
+function parseArgs(argv: readonly string[]): Args {
+  const args: Args = {
+    port: DEFAULT_PORT,
+    timeoutSeconds: DEFAULT_REQUEST_TIMEOUT_MS / 1000,
+    allowedOrigins: [],
+    help: false,
+    version: false,
+  };
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
+    const a = argv[i] as string;
     if (a === '--help' || a === '-h') {
-      help = true;
-    } else if (a === '--port' || a === '-p') {
-      const next = argv[i + 1];
-      if (next === undefined) {
-        throw new Error(`${a} requires a value`);
-      }
-      const n = Number(next);
-      if (!Number.isInteger(n) || n <= 0 || n > 65535) {
-        throw new Error(`invalid port: ${next}`);
-      }
-      port = n;
+      args.help = true;
+      continue;
+    }
+    if (a === '--version' || a === '-v') {
+      args.version = true;
+      continue;
+    }
+    // Options with a value: `--name value` or `--name=value`.
+    const eq = a.indexOf('=');
+    const flag = a.startsWith('--') && eq > 0 ? a.slice(0, eq) : a;
+    let value: string | undefined;
+    if (flag !== a) {
+      value = a.slice(eq + 1);
+    } else if (['--port', '-p', '--timeout', '--allow-origin'].includes(a)) {
+      value = argv[i + 1];
+      if (value === undefined) throw new Error(`${a} requires a value`);
       i++;
-    } else if (a !== undefined && a.startsWith('--port=')) {
-      const n = Number(a.slice('--port='.length));
-      if (!Number.isInteger(n) || n <= 0 || n > 65535) {
-        throw new Error(`invalid port: ${a}`);
-      }
-      port = n;
+    }
+    if (flag === '--port' || flag === '-p') {
+      const n = Number(value);
+      if (!Number.isInteger(n) || n <= 0 || n > 65535) throw new Error(`invalid port: ${String(value)}`);
+      args.port = n;
+    } else if (flag === '--timeout') {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) throw new Error(`invalid timeout: ${String(value)}`);
+      args.timeoutSeconds = n;
+    } else if (flag === '--allow-origin') {
+      if (value === undefined || normalizeOrigin(value) === null) throw new Error(`invalid origin: ${String(value)}`);
+      args.allowedOrigins.push(value);
     } else {
-      throw new Error(`unknown argument: ${String(a)}`);
+      throw new Error(`unknown argument: ${a}`);
     }
   }
-  return { port, help };
+  return args;
 }
 
-const USAGE = `tweakcad-mcp — MCP relay for the TweakCAD
+const USAGE = `tweakcad-mcp: MCP relay for TweakCAD
 
 USAGE
-  tweakcad-mcp [--port <number>]
+  tweakcad-mcp [--port <number>] [--timeout <seconds>] [--allow-origin <origin>]...
 
 OPTIONS
-  --port, -p <number>   WebSocket bridge port (default ${DEFAULT_PORT})
-  --help, -h            Show this message
+  --port, -p <number>      WebSocket bridge port (default ${DEFAULT_PORT})
+  --timeout <seconds>      How long a tool call waits for the app (default ${DEFAULT_REQUEST_TIMEOUT_MS / 1000})
+  --allow-origin <origin>  Also accept the app from this origin, e.g. a
+                           self-hosted https://cad.example.com (repeatable).
+                           ${HOSTED_APP_ORIGIN} and localhost are always accepted.
+  --version, -v            Print the version
+  --help, -h               Show this message
 
-The bridge speaks MCP on stdio (for Claude Desktop or another MCP
-client) and relays tool calls to the running TweakCAD web app over
-WebSocket. Open the web app and enable the AI bridge in Settings -> AI
-to connect.
+The bridge speaks MCP on stdio to an MCP client and relays tool calls to
+the running TweakCAD web app over WebSocket. Open the app and turn on the
+AI bridge in Settings, AI to connect.
 `;
 
 function log(line: string): void {
@@ -88,10 +113,19 @@ async function main(argv: readonly string[]): Promise<number> {
     process.stderr.write(USAGE);
     return 0;
   }
+  if (parsed.version) {
+    process.stderr.write(`${PACKAGE_VERSION}\n`);
+    return 0;
+  }
 
-  const host = new BrowserSession();
+  const host = new BrowserSession({
+    requestTimeoutMs: parsed.timeoutSeconds * 1000,
+    onHello: (contract, toolCount) =>
+      log(`app announced ${toolCount} tools, tool contract ${contract ?? 'unversioned'}`),
+  });
   const bridge = new BridgeServer(host, {
     port: parsed.port,
+    allowedOrigins: parsed.allowedOrigins,
     log,
     onSessionChange: (n) => {
       if (n === 0) log('waiting for browser session...');
@@ -102,6 +136,13 @@ async function main(argv: readonly string[]): Promise<number> {
     await bridge.start();
   } catch (e) {
     log(`failed to start WebSocket bridge: ${e instanceof Error ? e.message : String(e)}`);
+    if ((e as { code?: unknown }).code === 'EADDRINUSE') {
+      log(
+        `port ${parsed.port} is taken, most likely by a bridge another MCP client started; ` +
+          'only one bridge can serve the app at a time. Close the other client, or give this one ' +
+          'another --port and set the same port in the app (Settings, AI).',
+      );
+    }
     return 1;
   }
   log(`WebSocket bridge listening on ws://127.0.0.1:${parsed.port}`);
@@ -121,7 +162,7 @@ async function main(argv: readonly string[]): Promise<number> {
   const shutdown = (signal: string): void => {
     if (shuttingDown) return;
     shuttingDown = true;
-    log(`received ${signal}, shutting down...`);
+    log(`shutting down (${signal})`);
     bridge
       .stop()
       .catch((e) => log(`shutdown error: ${e instanceof Error ? e.message : String(e)}`))
@@ -131,6 +172,10 @@ async function main(argv: readonly string[]): Promise<number> {
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  // A client that exits closes our stdin; without this the bridge would
+  // live on and keep the port, and the next start would fail.
+  process.stdin.on('end', () => shutdown('stdin closed'));
+  process.stdin.on('close', () => shutdown('stdin closed'));
 
   // Keep the process alive; stdio + ws both hold event-loop refs.
   return await new Promise<number>(() => {

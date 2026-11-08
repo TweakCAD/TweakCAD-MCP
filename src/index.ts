@@ -3,14 +3,21 @@
  * programmatic embedding. End users invoke the CLI (`tweakcad-mcp`).
  */
 
-export { BridgeServer, type BridgeServerOptions } from './bridgeServer.ts';
+export {
+  BridgeServer,
+  HOSTED_APP_ORIGIN,
+  isOriginAllowed,
+  normalizeOrigin,
+  type BridgeServerOptions,
+} from './bridgeServer.ts';
 export {
   BrowserSession,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   NO_SESSION_MESSAGE,
   type BrowserSessionOptions,
   type WsLike,
 } from './browserSession.ts';
-export { createMcpServer, type McpServerOptions } from './mcpServer.ts';
+export { createMcpServer, LIST_TOOLS_WAIT_MS, PACKAGE_VERSION, type McpServerOptions } from './mcpServer.ts';
 export type {
   ExecuteToolRequest,
   ToolResponse,

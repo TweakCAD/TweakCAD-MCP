@@ -82,10 +82,24 @@ describe('BrowserSession', () => {
     expect(changed).toHaveBeenCalled(); // catalogue cleared
   });
 
-  it('times out a call with no reply', async () => {
+  it('times out a call with no reply, saying it may still have run', async () => {
     const s = new BrowserSession({ requestTimeoutMs: 10 });
     const { ws } = fakeWs();
     s.attach(ws);
-    await expect(s.executeTool('x', {})).rejects.toThrow(/timed out/);
+    await expect(s.executeTool('x', {})).rejects.toThrow(/timed out .* may still have applied it/);
+  });
+
+  it('waitForTools resolves on hello, or after the wait with no tab', async () => {
+    const s = new BrowserSession();
+    const hello = vi.fn();
+    const withHello = new BrowserSession({ onHello: hello });
+    const waiting = withHello.waitForTools(5_000);
+    withHello.attach(fakeWs().ws);
+    withHello.handleFrame(encode({ type: 'hello', contract: 3, tools: [{ name: 'a', description: '', inputSchema: { type: 'object' } }] }));
+    await waiting;
+    expect(hello).toHaveBeenCalledWith(3, 1);
+    const start = Date.now();
+    await s.waitForTools(20);
+    expect(Date.now() - start).toBeGreaterThanOrEqual(15);
   });
 });
