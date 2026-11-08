@@ -1,70 +1,47 @@
 # @tweakcad/mcp-bridge
 
-A small Node CLI that relays Model Context Protocol (MCP) traffic between
-**any MCP-capable client** and a running TweakCAD web app. MCP is a generic
-protocol, so the same bridge works with Claude Desktop, Claude Code, Cursor,
-Windsurf, VS Code (Copilot agent mode), Zed, Cline, Gemini CLI, OpenAI Codex,
-JetBrains AI Assistant, and any other client that speaks MCP.
-
-The bridge speaks MCP over stdio and WebSocket (`ws://127.0.0.1:7788` by
-default) to the browser tab.
+Drive [TweakCAD](https://tweakcad.com) from any MCP client: Claude Desktop,
+Claude Code, Cursor, Windsurf, VS Code, Codex, Zed and others. The bridge is a
+small Node CLI (Node 24 or later). It speaks MCP over stdio to the client and
+relays each tool call over a local WebSocket (`ws://127.0.0.1:7788`) to the
+TweakCAD tab, which runs it against the open document.
 
 ```
-+----------------+        stdio (MCP)         +-----------------+        ws (JSON)         +----------------+
-|  MCP client    | <------------------------> |  tweakcad-mcp   | <----------------------> |  CAD web app   |
-+----------------+                            +-----------------+                          +----------------+
++----------------+     stdio (MCP)     +-----------------+    ws (JSON)    +----------------+
+|  MCP client    | <-----------------> |  tweakcad-mcp   | <-------------> |  TweakCAD tab  |
++----------------+                     +-----------------+                 +----------------+
 ```
 
-The bridge itself holds **no document state** and runs no tool logic: every
-tool call is forwarded to the browser tab, which runs it against the open
-document and replies. The tab also sends the tool list on connect, so the
-bridge lists exactly the tools the running app has.
+The bridge holds no document state and runs no tool logic. The tab sends its
+tool list when it connects, so the client sees exactly the tools the running
+app has.
 
-## Install / run
+## Setup
 
-Published to npm, so most clients can run it without a checkout:
+1. **Add the bridge to your MCP client** (below). The client starts it with
+   `npx -y @tweakcad/mcp-bridge`; there is nothing to install by hand.
+2. **Turn it on in the app:** open TweakCAD, click **Settings** (top right),
+   and in the **AI** tab tick **Enable AI bridge** (default address
+   `localhost:7788`). A dot beside the Settings icon turns green when the tab
+   is connected.
+
+Ask the assistant to call `cad_help` first; it explains the document and the
+tools.
+
+### Claude Code
 
 ```bash
-npx @tweakcad/mcp-bridge           # listens on ws://127.0.0.1:7788
+claude mcp add tweakcad -- npx -y @tweakcad/mcp-bridge
 ```
 
-From a clone of this repo (Node 24, `corepack enable` for pnpm):
-
-```bash
-pnpm install
-pnpm build
-pnpm start                         # listens on ws://127.0.0.1:7788
-```
-
-CLI options:
-
-```
-tweakcad-mcp [--port <number>]
-  --port, -p <number>   WebSocket bridge port (default 7788)
-  --help, -h            Show usage
-```
-
-Exit with `Ctrl-C`; the bridge closes the WebSocket cleanly and exits 0.
-
-## Register with your MCP client
-
-The bridge presents itself as a standard MCP stdio server: a client launches
-`node .../dist/cli.js` and talks to it over stdio. Almost every client uses
-the same `mcpServers` JSON object and differs only in **where** that config
-lives; a few use a different key or file format. Find your client below and
-adjust the absolute path to the built `dist/cli.js`.
-
-### Clients using the standard `mcpServers` JSON
-
-Claude Desktop, Claude Code, Cursor, Windsurf, Cline, Gemini CLI, and most
-others accept this exact object — drop it into the file listed in the table:
+### Claude Desktop, Cursor, Windsurf, Cline, Gemini CLI
 
 ```json
 {
   "mcpServers": {
     "tweakcad": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-bridge/dist/cli.js", "--port", "7788"]
+      "command": "npx",
+      "args": ["-y", "@tweakcad/mcp-bridge"]
     }
   }
 }
@@ -72,87 +49,85 @@ others accept this exact object — drop it into the file listed in the table:
 
 | Client | Config file |
 |---|---|
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) · `%APPDATA%\Claude\claude_desktop_config.json` (Windows) — restart after editing |
-| Claude Code | project `.mcp.json` (or run `claude mcp add tweakcad -- node /abs/path/dist/cli.js`) |
-| Cursor | `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per-project) |
+| Claude Desktop | Settings → Developer → Edit Config (`claude_desktop_config.json`); restart the app after saving |
+| Cursor | `~/.cursor/mcp.json`, or `.cursor/mcp.json` in a project |
 | Windsurf | `~/.codeium/windsurf/mcp_config.json` |
-| Cline (VS Code ext.) | `cline_mcp_settings.json` (via the extension's MCP settings) |
+| Cline | MCP Servers → Configure (`cline_mcp_settings.json`) |
 | Gemini CLI | `~/.gemini/settings.json` |
-| JetBrains AI Assistant | IDE Settings → Tools → AI Assistant → MCP (same JSON shape) |
 
-### VS Code (Copilot agent mode)
+### VS Code
 
-VS Code uses a `servers` key (not `mcpServers`). Add to `.vscode/mcp.json`
-in your workspace:
+`.vscode/mcp.json` in the workspace (note `servers`, not `mcpServers`):
 
 ```json
 {
   "servers": {
     "tweakcad": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-bridge/dist/cli.js", "--port", "7788"]
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@tweakcad/mcp-bridge"]
     }
   }
 }
 ```
 
-### OpenAI Codex CLI
+### Codex CLI
 
-Codex reads `~/.codex/config.toml`; MCP servers live under the `mcp_servers`
-table:
+```bash
+codex mcp add tweakcad -- npx -y @tweakcad/mcp-bridge
+```
+
+or in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.tweakcad]
-command = "node"
-args = ["/absolute/path/to/mcp-bridge/dist/cli.js", "--port", "7788"]
+command = "npx"
+args = ["-y", "@tweakcad/mcp-bridge"]
 ```
 
 ### Zed
 
-Zed calls them `context_servers` in `settings.json`:
+`settings.json`:
 
 ```json
 {
   "context_servers": {
     "tweakcad": {
-      "command": { "path": "node", "args": ["/absolute/path/to/mcp-bridge/dist/cli.js", "--port", "7788"] }
+      "command": "npx",
+      "args": ["-y", "@tweakcad/mcp-bridge"]
     }
   }
 }
 ```
 
-### Once the package is published
+### Notes
 
-You can skip the absolute path and use the `tweakcad-mcp` command directly —
-e.g. for the standard `mcpServers` shape:
+- **Windows:** if the client cannot start `npx`, use `"command": "cmd"` with
+  `"args": ["/c", "npx", "-y", "@tweakcad/mcp-bridge"]`.
+- **No tools listed?** Turn the bridge on in the app, then reconnect the
+  server in your client. The bridge waits a few seconds for the tab when the
+  client first asks; clients that support `tools/list_changed` pick the tools
+  up whenever the tab connects.
+- **One bridge at a time.** The port serves one bridge and one tab. A second
+  client starting the bridge on the same port fails with a message saying so;
+  give it another `--port` and set that port in the app.
 
-```json
-{
-  "mcpServers": {
-    "tweakcad": {
-      "command": "tweakcad-mcp",
-      "args": ["--port", "7788"]
-    }
-  }
-}
+## Options
+
+Add them after the package name in `args`, e.g.
+`["-y", "@tweakcad/mcp-bridge", "--port", "7790"]`.
+
+```
+--port, -p <number>      WebSocket port (default 7788)
+--timeout <seconds>      How long a tool call waits for the app (default 60)
+--allow-origin <origin>  Also accept the app from this origin, e.g. a self-hosted
+                         https://cad.example.com (repeatable)
+--version, -v            Print the version
+--help, -h               Show usage
 ```
 
-## Enable the bridge in the CAD app
-
-Open the CAD app, click the **Settings** icon (top-right), and toggle
-**Enable AI bridge** in the AI tab. Set host/port to match the bridge
-process (default `localhost:7788`).
-
-A small dot appears next to the Settings icon showing the connection
-state — yellow while connecting, green when the bridge is reachable,
-red on error. Hover for the URL and last error message; click to jump
-back into Settings.
-
-The browser opens a WebSocket to the bridge, sends its tool list and starts
-answering tool calls, one at a time in the order they arrive. Edits from the
-MCP client go through the same editor commands the app's own tools use, so a
-refused edit says why in the same words. Undo groups a client opens with
-`begin_transaction` and leaves open are closed when it disconnects.
+Only pages from `https://tweakcad.com`, from `localhost` (any port) and from
+`--allow-origin` origins may connect; any other page is refused.
 
 ## Tool surface
 
@@ -199,10 +174,20 @@ written for the old names need updating.
 
 ## Architecture notes
 
-- **One session.** A second browser that connects while another is active is
-  refused with WebSocket close code 1013 and a reason.
+- **One session.** A second tab that connects while another is attached is
+  refused during the handshake (HTTP 409), so its socket never opens and it
+  keeps retrying until the first tab leaves.
+- **Origins.** A handshake whose `Origin` is not allowed (see Options) is
+  refused with HTTP 403. Clients that send no `Origin` (local programs, not
+  pages) are accepted; the port listens on `127.0.0.1` only.
+- **Contract.** The bridge relays whatever catalogue the tab announces, of any
+  contract version, and logs the version and tool count to stderr.
+- **Timeouts.** A call with no reply within `--timeout` fails with a message
+  saying the app may still have applied it; so does a call in flight when the
+  tab disconnects. The tab runs calls one at a time, in order.
 - **No cache.** Every call, reads included, goes to the browser, which holds
   the document; the bridge keeps only the tool list of the last `hello`.
+- **Lifetime.** The bridge exits when the client closes its stdin.
 - **Images.** A tool value `{kind: 'image', mimeType, data}` (the screenshot)
   is returned to the MCP client as image content.
 - **Stdio is reserved for MCP.** All human-readable logging goes to stderr;
@@ -210,19 +195,25 @@ written for the old names need updating.
 
 ## Development
 
+Node 24 or later, pnpm through `corepack enable`:
+
 ```bash
+pnpm install
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
 ```
 
+To try a local build in a client, use `"command": "node"` with
+`"args": ["/absolute/path/to/mcp-bridge/dist/cli.js"]` instead of `npx`.
+
 CI runs typecheck, lint and the test suite on every push. Contributions welcome —
 see [CONTRIBUTING.md](./CONTRIBUTING.md); for a security issue, see
 [SECURITY.md](./SECURITY.md) rather than opening an issue.
 
-The test suite mocks the WebSocket client end-to-end; there's no need for a
-running browser or MCP client to develop locally.
+The tests drive the bridge with a scripted tab over a real WebSocket and an
+in-memory MCP client; no browser is needed.
 
 ## License
 

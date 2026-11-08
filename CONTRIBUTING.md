@@ -7,13 +7,13 @@ truth and the thing that owns the tool catalogue.
 
 ## Setup
 
-Node 24, pnpm via `corepack enable`.
+Node 24 or later, pnpm via `corepack enable`.
 
 ```bash
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm test        # vitest; the WebSocket client end is mocked, no browser needed
+pnpm test        # vitest; a scripted tab stands in for the browser
 pnpm build
 ```
 
@@ -23,8 +23,8 @@ pnpm build
 stderr. A stray `console.log` corrupts the protocol and the failure looks like
 a confused client, not a logging bug.
 
-**The bridge holds no state.** Tool calls are forwarded; the only thing cached
-is what the browser pushes for the read-only tools. If a change needs the
+**The bridge holds no state.** Tool calls are forwarded; the only thing kept
+is the tool list the tab announced in its last `hello`. If a change needs the
 bridge to know what a document contains, it is probably the wrong layer — open
 an issue and describe the flow.
 
