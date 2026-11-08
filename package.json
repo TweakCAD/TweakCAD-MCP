@@ -4,6 +4,19 @@
   "private": false,
   "type": "module",
   "description": "MCP relay between an MCP client over stdio and the running TweakCAD web app over WebSocket. Pure relay — tool execution happens in the browser.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cad",
+    "tweakcad"
+  ],
+  "homepage": "https://github.com/TweakCAD/TweakCAD-MCP#readme",
+  "bugs": "https://github.com/TweakCAD/TweakCAD-MCP/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TweakCAD/TweakCAD-MCP.git"
+  },
+  "license": "AGPL-3.0-or-later",
   "publishConfig": {
     "access": "public"
   },
@@ -11,12 +24,15 @@
     "tweakcad-mcp": "./dist/cli.js"
   },
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
   "files": [
-    "dist",
-    "README.md"
+    "dist/*.js"
   ],
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -25,7 +41,8 @@
     "start": "node --enable-source-maps dist/cli.js",
     "test:unit": "vitest run",
     "test": "vitest run",
-    "clean": "rm -rf dist"
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prepack": "npm run clean && npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
