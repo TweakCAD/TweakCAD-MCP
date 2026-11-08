@@ -5,3 +5,9 @@ packages:
   - '.'
 allowBuilds:
   esbuild: true
+# pnpm hardening.
+strictPeerDependencies: true
+autoInstallPeers: true
+preferFrozenLockfile: true
+verifyStoreIntegrity: true
+resolutionMode: highest
