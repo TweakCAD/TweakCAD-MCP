@@ -26,8 +26,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:unit
       # mcp-bridge is a pure stdio<->ws relay with no shared-contract deps, so
-      # there is no sync gate here. Supply-chain scanning is handled separately,
-      # outside this repo.
+      # there is no sync gate here.
 
   # A gate like `ci`: any lint error fails the run. Warnings are reported
   # but don't fail it.
