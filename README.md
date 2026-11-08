@@ -189,7 +189,7 @@ written for the old names need updating.
 | `feature_freeze` | Freeze a feature (it keeps its result as last built, whatever changes before it) or make it live again. |
 | `get_assembly` | An assembly's instances with their solved poses, joints with their values, motion links, groups, positions, exploded views, out-of-date contexts and its features with their copy counts. |
 | `assembly_create` / `assembly_insert` / `assembly_move_instance` / `assembly_set_instance` / `assembly_delete` | Make an assembly; place, move, ground or suppress instances of parts, assemblies and library components; delete a row. |
-| `assembly_joint` / `assembly_drive` / `assembly_relation` / `assembly_group` | Joints between faces or round edges of instances, driving their values, motion links between joints, rigid groups and contact sets. Each edit writes back the pose it solves to. |
+| `assembly_joint` / `assembly_set_joint` / `assembly_drive` / `assembly_relation` / `assembly_group` | Joints between faces or round edges of instances; renaming, locking or suppressing one; driving their values (a locked joint is refused), motion links between joints, rigid groups and contact sets. Each edit writes back the pose it solves to. |
 | `assembly_position` / `assembly_exploded_view` | Saved positions of the joints, and exploded views. |
 | `feature_derive` | Another part's, an assembly's or a library component's bodies brought into a part, offset or mirrored, as new bodies or joined. |
 | `assembly_update_contexts` / `assembly_hole_through` | Re-capture out-of-date contexts (a part using another part's geometry), and a hole through several parts. |
