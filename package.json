@@ -28,8 +28,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.18.1",
-    "ws": "8.18.3"
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "ws": "8.22.2",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
