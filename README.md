@@ -169,6 +169,9 @@ written for the old names need updating.
 | `feature_derive` | Another part's, an assembly's or a library component's bodies brought into a part, offset or mirrored, as new bodies or joined. |
 | `assembly_update_contexts` / `assembly_hole_through` | Re-capture out-of-date contexts (a part using another part's geometry), and a hole through several parts. |
 | `assembly_pattern` / `assembly_mirror` / `assembly_replicate` | Copy instances in a linear or circular pattern, mirror them in a plane (of the same hand, or of the opposite hand as new parts), or replicate them onto other faces or holes like the one they sit on; each edits an existing feature too. |
+| `folder_create` / `folder_edit` / `folder_delete` / `folder_move_items` | Folders in the browser: make, rename, nest and delete them, and file parts, assemblies and library entries into them in order. They change no geometry. |
+| `part_delete` | Delete a part or an assembly. Refused while the root, a derive or an assembly feature uses it; the instances that place it go too only when asked. |
+| `part_set_bom` / `get_bom` | Mark parts normal (made), purchased or reference (there only for fit), one by one or a whole folder, and read the bill of materials with quantities. An assembly's exports leave purchased and reference parts out unless asked. |
 | `list_bodies` / `list_faces` / `list_edges` / `list_vertices` / `list_construction` / `measure` | What the model is built into, with handles and measures, and filters (a face's edges, the edge between two faces, faces facing a direction). |
 | `view_fit_all` / `view_set_standard` / `view_zoom` / `view_screenshot` | The camera, and a JPEG of the viewport returned as image content. |
 
